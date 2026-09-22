@@ -1,0 +1,626 @@
+package com.example.ui.screens.profile
+
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.data.model.ReelEntity
+import com.example.data.model.UserEntity
+import com.example.ui.components.VideoFilterOverlay
+import com.example.ui.theme.ReelBorder
+import com.example.ui.theme.ReelCyan
+import com.example.ui.theme.ReelGold
+import com.example.ui.theme.ReelPink
+import com.example.ui.theme.ReelPurple
+import com.example.ui.theme.ReelSurface
+import com.example.ui.theme.ReelSurfaceVariant
+
+@Composable
+fun ProfileScreen(
+    user: UserEntity?,
+    userReels: List<ReelEntity>,
+    allReels: List<ReelEntity>,
+    onUpdateProfile: (UserEntity) -> Unit,
+    onDeleteAccount: () -> Unit,
+    onLogout: () -> Unit,
+    onNavigateToMonetization: () -> Unit,
+    onDeleteReel: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val currentUser = user ?: UserEntity()
+
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 = My Reels, 1 = Saved
+
+    val savedReels = allReels.filter { it.isDownloaded }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF090710))
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .testTag("profile_screen"),
+        contentPadding = PaddingValues(bottom = 90.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // Profile Header Section
+        item(span = { GridItemSpan(3) }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                // Top App Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = currentUser.handle,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Row {
+                        IconButton(onClick = onNavigateToMonetization) {
+                            Icon(Icons.Default.MonetizationOn, contentDescription = "Studio", tint = ReelGold)
+                        }
+                        IconButton(onClick = onLogout) {
+                            Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White.copy(alpha = 0.7f))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Avatar & Counts Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Avatar
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .border(
+                                width = 2.5.dp,
+                                brush = Brush.linearGradient(listOf(ReelPink, ReelCyan)),
+                                shape = CircleShape
+                            )
+                            .background(ReelPurple),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = currentUser.name.take(1).uppercase(),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    // Stats Columns
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        StatItem(count = userReels.size.toString(), label = "Reels")
+                        StatItem(count = formatNumber(currentUser.followersCount), label = "Followers")
+                        StatItem(count = formatNumber(currentUser.followingCount), label = "Following")
+                        StatItem(count = formatNumber(currentUser.totalLikesCount), label = "Likes")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Name & Bio
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = currentUser.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Verified,
+                        contentDescription = "Verified",
+                        tint = ReelCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = currentUser.bio,
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Action Buttons (Edit Profile & Danger Zone)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showEditProfileDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .testTag("edit_profile_button")
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Edit Profile", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { showDeleteAccountDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
+                        modifier = Modifier
+                            .height(40.dp)
+                            .testTag("delete_account_button")
+                    ) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Delete Account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Tabs (My Reels vs Saved)
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = ReelPink,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = ReelPink,
+                            height = 2.dp
+                        )
+                    }
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = {
+                            Icon(
+                                Icons.Default.GridOn,
+                                contentDescription = "My Reels",
+                                tint = if (selectedTab == 0) ReelPink else Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = {
+                            Icon(
+                                Icons.Default.Bookmark,
+                                contentDescription = "Saved Reels",
+                                tint = if (selectedTab == 1) ReelPink else Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+        }
+
+        // Reels Grid Content
+        val displayedReels = if (selectedTab == 0) userReels else savedReels
+
+        if (displayedReels.isEmpty()) {
+            item(span = { GridItemSpan(3) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = if (selectedTab == 0) Icons.Default.PlayArrow else Icons.Default.Bookmark,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.3f),
+                            modifier = Modifier.size(44.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (selectedTab == 0) "No reels uploaded yet" else "No saved reels yet",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            items(displayedReels, key = { it.id }) { reel ->
+                ReelThumbnailItem(
+                    reel = reel,
+                    onDelete = { onDeleteReel(reel.id) }
+                )
+            }
+        }
+    }
+
+    // Edit Profile Dialog
+    if (showEditProfileDialog) {
+        var editName by remember { mutableStateOf(currentUser.name) }
+        var editHandle by remember { mutableStateOf(currentUser.handle) }
+        var editBio by remember { mutableStateOf(currentUser.bio) }
+        var editUpi by remember { mutableStateOf(currentUser.upiId) }
+
+        AlertDialog(
+            onDismissRequest = { showEditProfileDialog = false },
+            title = {
+                Text("Edit Profile • प्रोफ़ाइल संपादित करें", color = Color.White, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Display Name") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = ReelSurfaceVariant,
+                            unfocusedContainerColor = ReelSurfaceVariant,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedIndicatorColor = ReelPink
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editHandle,
+                        onValueChange = { editHandle = it },
+                        label = { Text("Username Handle (@)") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = ReelSurfaceVariant,
+                            unfocusedContainerColor = ReelSurfaceVariant,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedIndicatorColor = ReelPink
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editBio,
+                        onValueChange = { editBio = it },
+                        label = { Text("Bio") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = ReelSurfaceVariant,
+                            unfocusedContainerColor = ReelSurfaceVariant,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedIndicatorColor = ReelPink
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = editUpi,
+                        onValueChange = { editUpi = it },
+                        label = { Text("UPI ID (For Monetization)") },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = ReelSurfaceVariant,
+                            unfocusedContainerColor = ReelSurfaceVariant,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedIndicatorColor = ReelCyan
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val updated = currentUser.copy(
+                            name = editName.trim(),
+                            handle = if (editHandle.startsWith("@")) editHandle.trim() else "@${editHandle.trim()}",
+                            bio = editBio.trim(),
+                            upiId = editUpi.trim()
+                        )
+                        onUpdateProfile(updated)
+                        showEditProfileDialog = false
+                        Toast.makeText(context, "Profile updated successfully! ✨", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ReelPink)
+                ) {
+                    Text("Save Changes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditProfileDialog = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = ReelSurface
+        )
+    }
+
+    // Delete Account Dialog (अकाउंट डिलीट करने का ऑप्शन)
+    if (showDeleteAccountDialog) {
+        var deleteConfirmationText by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Delete Account? • खाता हमेशा के लिए हटाएं?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "⚠️ WARNING: This action is permanent and cannot be undone.\n\nAll your uploaded reels, profile information, follower relationships, comments, and pending monetization earnings will be permanently deleted from ReelVibe servers.",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Type 'DELETE' below to confirm:",
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = deleteConfirmationText,
+                        onValueChange = { deleteConfirmationText = it },
+                        placeholder = { Text("DELETE", color = Color.White.copy(alpha = 0.4f)) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = ReelSurfaceVariant,
+                            unfocusedContainerColor = ReelSurfaceVariant,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedIndicatorColor = Color.Red
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("delete_confirmation_input")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (deleteConfirmationText.trim().equals("DELETE", ignoreCase = true)) {
+                            showDeleteAccountDialog = false
+                            onDeleteAccount()
+                            Toast.makeText(context, "Account permanently deleted. Goodbye! 👋", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Please type DELETE to confirm", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    modifier = Modifier.testTag("confirm_delete_account_button")
+                ) {
+                    Text("Delete Account", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xFF1B0B14)
+        )
+    }
+}
+
+@Composable
+fun StatItem(count: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = count, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+        Text(text = label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+fun ReelThumbnailItem(
+    reel: ReelEntity,
+    onDelete: () -> Unit
+) {
+    var showOptions by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .aspectRatio(0.72f)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF28104E), Color(0xFF120724))
+                )
+            )
+            .clickable { showOptions = true }
+    ) {
+        VideoFilterOverlay(filterType = reel.filterType)
+
+        // Bottom views badge
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(
+                text = formatNumber(reel.viewsCount),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Filter badge top right
+        if (reel.filterType != "NORMAL") {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .clip(CircleShape)
+                    .background(ReelPink)
+                    .size(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+            }
+        }
+    }
+
+    if (showOptions && reel.isUserUpload) {
+        AlertDialog(
+            onDismissRequest = { showOptions = false },
+            title = { Text("Reel Options", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text(reel.caption, color = Color.White.copy(alpha = 0.8f)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showOptions = false
+                        onDelete()
+                    }
+                ) {
+                    Text("Delete Reel", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOptions = false }) {
+                    Text("Close", color = Color.White)
+                }
+            },
+            containerColor = ReelSurface
+        )
+    }
+}
+
+fun formatNumber(num: Int): String {
+    return when {
+        num >= 1_000_000 -> String.format("%.1fM", num / 1_000_000.0)
+        num >= 1_000 -> String.format("%.1fK", num / 1_000.0)
+        else -> num.toString()
+    }
+}

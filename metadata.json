@@ -1,0 +1,6 @@
+{
+  "name": "ReelVibe",
+  "description": "Short video and reels platform with camera recording, video filters, audio extraction, creator monetization, and ad integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
