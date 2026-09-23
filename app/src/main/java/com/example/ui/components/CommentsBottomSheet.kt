@@ -19,17 +19,29 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -47,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CommentEntity
 import com.example.ui.theme.ReelCyan
+import com.example.ui.theme.ReelGold
 import com.example.ui.theme.ReelPink
 import com.example.ui.theme.ReelPurple
 import com.example.ui.theme.ReelSurface
@@ -59,10 +72,14 @@ fun CommentsBottomSheet(
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
     onLikeComment: (Long) -> Unit,
+    onDeleteComment: ((Long) -> Unit)? = null,
+    onBanCommenter: ((Long, String, String, String) -> Unit)? = null,
+    onOpenModeratorZone: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var commentInput by remember { mutableStateOf("") }
+    var commentToBan by remember { mutableStateOf<CommentEntity?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -74,7 +91,7 @@ fun CommentsBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.72f)
+                .fillMaxHeight(0.75f)
                 .navigationBarsPadding()
                 .imePadding()
         ) {
@@ -92,6 +109,22 @@ fun CommentsBottomSheet(
                     color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
+
+                if (onOpenModeratorZone != null) {
+                    IconButton(
+                        onClick = onOpenModeratorZone,
+                        modifier = Modifier.size(32.dp).testTag("open_moderator_zone_comments_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Moderator Zone",
+                            tint = Color(0xFFFF5252),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.size(32.dp)
@@ -130,7 +163,9 @@ fun CommentsBottomSheet(
                     items(comments, key = { it.id }) { comment ->
                         CommentItem(
                             comment = comment,
-                            onLike = { onLikeComment(comment.id) }
+                            onLike = { onLikeComment(comment.id) },
+                            onDelete = { onDeleteComment?.invoke(comment.id) },
+                            onRequestBan = { commentToBan = comment }
                         )
                     }
                 }
@@ -213,13 +248,86 @@ fun CommentsBottomSheet(
             }
         }
     }
+
+    // Ban User Confirmation Dialog
+    commentToBan?.let { targetComment ->
+        AlertDialog(
+            onDismissRequest = { commentToBan = null },
+            containerColor = ReelSurface,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Block,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "यूजर को ब्लैकलिस्ट करें (Ban User)",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "क्या आप ${targetComment.userHandle} को ब्लैकलिस्ट करना चाहते हैं?",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "कमेंट: \"${targetComment.text}\"",
+                        color = Color(0xFFFF8A80),
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "यह कमेंट तुरंत डिलीट हो जाएगा और यूजर को हमेशा के लिए ब्लॉक कर दिया जाएगा।",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onBanCommenter?.invoke(
+                            targetComment.id,
+                            targetComment.userHandle,
+                            targetComment.userName,
+                            "Abusive Comment: ${targetComment.text}"
+                        )
+                        commentToBan = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                    modifier = Modifier.testTag("confirm_ban_commenter_button")
+                ) {
+                    Text("Delete & Ban User (बैन करें)", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { commentToBan = null }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.7f))
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun CommentItem(
     comment: CommentEntity,
-    onLike: () -> Unit
+    onLike: () -> Unit,
+    onDelete: (() -> Unit)? = null,
+    onRequestBan: (() -> Unit)? = null
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,24 +375,88 @@ fun CommentItem(
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .clickable { onLike() }
-                .padding(start = 8.dp)
-        ) {
-            Icon(
-                imageVector = if (comment.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = "Like",
-                tint = if (comment.isLiked) ReelPink else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = comment.likesCount.toString(),
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.6f)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clickable { onLike() }
+                    .padding(start = 4.dp, end = 4.dp)
+            ) {
+                Icon(
+                    imageVector = if (comment.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Like",
+                    tint = if (comment.isLiked) ReelPink else Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = comment.likesCount.toString(),
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+            }
+
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(24.dp).testTag("comment_more_options_${comment.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More Options",
+                        tint = Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(ReelSurfaceVariant)
+                ) {
+                    if (onRequestBan != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Block,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF5252),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Delete & Ban User (बैन करें)", color = Color(0xFFFF5252), fontSize = 12.sp)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                onRequestBan()
+                            }
+                        )
+                    }
+
+                    if (onDelete != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Delete Comment (कमेंट हटाएं)", color = Color.White, fontSize = 12.sp)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }

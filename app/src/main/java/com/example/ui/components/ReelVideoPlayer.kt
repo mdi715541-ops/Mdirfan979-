@@ -24,6 +24,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +66,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,6 +102,7 @@ fun ReelVideoPlayer(
     var playbackProgress by remember { mutableFloatStateOf(0f) }
 
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Simulate video progress while active and playing
     LaunchedEffect(isPlaying, isActive) {
@@ -136,8 +141,29 @@ fun ReelVideoPlayer(
             }
             .testTag("reel_video_player_${reel.id}")
     ) {
-        // Video Renderer / Animated Cinematic Scene
-        if (reel.videoUri.startsWith("content://") || reel.videoUri.startsWith("file://")) {
+        // Video Renderer / Photo Renderer / Animated Cinematic Scene
+        val isPhotoMedia = remember(reel.videoUri) {
+            reel.videoUri.startsWith("image:") ||
+            reel.videoUri.contains("photo") ||
+            reel.videoUri.endsWith(".jpg", ignoreCase = true) ||
+            reel.videoUri.endsWith(".png", ignoreCase = true) ||
+            reel.videoUri.endsWith(".jpeg", ignoreCase = true) ||
+            try {
+                context.contentResolver.getType(Uri.parse(reel.videoUri))?.startsWith("image") == true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        if (isPhotoMedia) {
+            val photoUri = if (reel.videoUri.startsWith("image:")) reel.videoUri.removePrefix("image:") else reel.videoUri
+            AsyncImage(
+                model = photoUri,
+                contentDescription = reel.caption,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (reel.videoUri.startsWith("content://") || reel.videoUri.startsWith("file://")) {
             // Real device video
             AndroidVideoSurface(
                 videoUri = reel.videoUri,
@@ -156,6 +182,27 @@ fun ReelVideoPlayer(
 
         // Live Video Filter Overlay Layer
         VideoFilterOverlay(filterType = reel.filterType)
+
+        // Video Text Sticker Overlay (e.g. "I ❤️ फखरपुर" as in viral video)
+        if (reel.videoStickerText.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 110.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = reel.videoStickerText,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
 
         // Top Vignette & Bottom Scrim Gradients for subtitle readability
         Box(
@@ -220,15 +267,23 @@ fun ReelVideoPlayer(
             )
         }
 
-        // Mute / Unmute Button in Top Right
+        // Mute / Unmute Floating Speaker Icon (Positioned near bottom right above audio disc)
         IconButton(
-            onClick = { isMuted = !isMuted },
+            onClick = {
+                isMuted = !isMuted
+                android.widget.Toast.makeText(
+                    context,
+                    if (isMuted) "Audio Muted 🔇" else "Audio Playing 🔊",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            },
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 48.dp, end = 16.dp)
-                .size(36.dp)
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 60.dp, end = 16.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Color.Black.copy(alpha = 0.6f))
+                .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
         ) {
             Icon(
                 imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
@@ -260,6 +315,8 @@ fun VideoFilterOverlay(filterType: String) {
         "NEON" -> NeonCyanMagenta
         "CINEMATIC" -> CinematicTeal
         "GOLDEN_HOUR" -> GoldenHourAmber
+        "BOLLYWOOD_GLAM" -> Color(0x28FF69B4)
+        "RETRO_VHS" -> Color(0x333A1C71)
         else -> Color.Transparent
     }
 

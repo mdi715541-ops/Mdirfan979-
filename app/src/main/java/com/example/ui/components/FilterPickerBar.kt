@@ -127,5 +127,7 @@ fun getFilterSwatchBrush(filter: VideoFilter): Brush {
         VideoFilter.NEON -> Brush.linearGradient(listOf(ReelPink, ReelCyan))
         VideoFilter.CINEMATIC -> Brush.linearGradient(listOf(Color(0xFF00B4D8), Color(0xFFFF9E00)))
         VideoFilter.GOLDEN_HOUR -> Brush.linearGradient(listOf(Color(0xFFFFB703), Color(0xFFFB8500)))
+        VideoFilter.BOLLYWOOD_GLAM -> Brush.linearGradient(listOf(Color(0xFFFF758C), Color(0xFFFF7EB3)))
+        VideoFilter.RETRO_VHS -> Brush.linearGradient(listOf(Color(0xFF3A1C71), Color(0xFFD76D77), Color(0xFFFFAF7B)))
     }
 }

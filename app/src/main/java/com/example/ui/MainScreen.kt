@@ -73,10 +73,17 @@ fun MainScreen(
     val userUploadedReels by viewModel.userUploadedReels.collectAsState()
     val monetizationStats by viewModel.monetizationStats.collectAsState()
     val payouts by viewModel.payouts.collectAsState()
+    val allStories by viewModel.allStories.collectAsState()
     val activeComments by viewModel.activeComments.collectAsState()
+    val followedCreators by viewModel.followedCreators.collectAsState()
+    val blacklistedUsers by viewModel.allBlacklistedUsers.collectAsState()
+    val pendingReports by viewModel.pendingReports.collectAsState()
+    val allPages by viewModel.allPages.collectAsState()
 
     var activeTab by remember { mutableStateOf(ReelNavTab.FEED) }
     var isCreateScreenOpen by remember { mutableStateOf(false) }
+    var createReelAudioTitle by remember { mutableStateOf<String?>(null) }
+    var createReelAudioArtist by remember { mutableStateOf<String?>(null) }
 
     // If user is not logged in or account was deleted, show AuthScreen
     if (currentUser == null || !currentUser!!.isLoggedIn) {
@@ -114,6 +121,12 @@ fun MainScreen(
                         ReelsFeedScreen(
                             reels = allReels,
                             activeComments = activeComments,
+                            stories = allStories,
+                            blacklistedUsers = blacklistedUsers,
+                            pendingReports = pendingReports,
+                            currentUserHandle = currentUser?.handle ?: "@irafan_creator",
+                            followedCreators = followedCreators,
+                            onToggleFollow = { handle, _ -> viewModel.toggleFollowCreator(handle) },
                             onLikeToggle = { id, liked -> viewModel.toggleLike(id, liked) },
                             onRecordView = { id -> viewModel.recordView(id) },
                             onRecordShare = { id -> viewModel.recordShare(id) },
@@ -122,7 +135,49 @@ fun MainScreen(
                             onOpenCommentsForReel = { id -> viewModel.loadComments(id) },
                             onAddComment = { id, text -> viewModel.addComment(id, text) },
                             onLikeComment = { commentId -> viewModel.likeComment(commentId) },
-                            onAdImpression = { viewModel.addAdReward(2.5, 1) }
+                            onDeleteComment = { commentId -> viewModel.deleteComment(commentId) },
+                            onBanCommenter = { commentId, handle, name, reason ->
+                                viewModel.deleteCommentAndBanUser(commentId, handle, name, reason)
+                            },
+                            onBlacklistUser = { handle, name, reason ->
+                                viewModel.blacklistUser(handle, name, reason)
+                            },
+                            onUnblacklistUser = { handle ->
+                                viewModel.unblacklistUser(handle)
+                            },
+                            onDeleteBlacklistEntry = { id ->
+                                viewModel.removeBlacklistEntry(id)
+                            },
+                            onResolveReportAndBan = { reportId, handle, name, reason ->
+                                viewModel.resolveReportAndBan(reportId, handle, name, reason)
+                            },
+                            onDismissReport = { reportId ->
+                                viewModel.dismissReport(reportId)
+                            },
+                            onReportReel = { reel, violationType ->
+                                viewModel.reportReel(reel, violationType)
+                            },
+                            onAdImpression = { viewModel.addAdReward(2.5, 1) },
+                            onAddStory = { mediaType, mediaUri, audioTitle, audioArtist, caption, stickerText, location ->
+                                viewModel.addStory(mediaType, mediaUri, audioTitle, audioArtist, caption, stickerText, location)
+                            },
+                            onAddReelToStatus = { reel ->
+                                viewModel.addReelToStory(reel)
+                            },
+                            onStoryViewed = { storyId ->
+                                viewModel.markStoryViewed(storyId)
+                            },
+                            onLikeStory = { storyId ->
+                                viewModel.likeStory(storyId)
+                            },
+                            onDeleteStory = { storyId ->
+                                viewModel.deleteStory(storyId)
+                            },
+                            onCreateReelWithAudio = { title, artist ->
+                                createReelAudioTitle = title
+                                createReelAudioArtist = artist
+                                isCreateScreenOpen = true
+                            }
                         )
                     }
 
@@ -145,11 +200,41 @@ fun MainScreen(
                             user = currentUser,
                             userReels = userUploadedReels,
                             allReels = allReels,
+                            blacklistedUsers = blacklistedUsers,
+                            pendingReports = pendingReports,
+                            allPages = allPages,
                             onUpdateProfile = { updated -> viewModel.updateProfile(updated) },
                             onDeleteAccount = { viewModel.deleteAccount() },
                             onLogout = { viewModel.logout() },
                             onNavigateToMonetization = { activeTab = ReelNavTab.MONETIZATION },
-                            onDeleteReel = { id -> viewModel.deleteReel(id) }
+                            onDeleteReel = { id -> viewModel.deleteReel(id) },
+                            onCreatePage = { name, cat, bio, upi ->
+                                viewModel.createPage(name, cat, bio, upi)
+                            },
+                            onSwitchToPage = { page ->
+                                viewModel.switchToPage(page)
+                            },
+                            onSwitchToNormalProfile = {
+                                viewModel.switchToNormalProfile()
+                            },
+                            onDeletePage = { pageId ->
+                                viewModel.deletePage(pageId)
+                            },
+                            onBlacklistUser = { handle, name, reason ->
+                                viewModel.blacklistUser(handle, name, reason)
+                            },
+                            onUnblacklistUser = { handle ->
+                                viewModel.unblacklistUser(handle)
+                            },
+                            onDeleteBlacklistEntry = { id ->
+                                viewModel.removeBlacklistEntry(id)
+                            },
+                            onResolveReportAndBan = { reportId, handle, name, reason ->
+                                viewModel.resolveReportAndBan(reportId, handle, name, reason)
+                            },
+                            onDismissReport = { reportId ->
+                                viewModel.dismissReport(reportId)
+                            }
                         )
                     }
                 }
@@ -165,12 +250,20 @@ fun MainScreen(
             CreateReelScreen(
                 currentUserName = currentUser?.name ?: "Mohammad Irafan",
                 currentUserHandle = currentUser?.handle ?: "@irafan_creator",
+                initialAudioTitle = createReelAudioTitle ?: "Nigahen Kyon Churaati Hai • Udit Narayan",
+                initialAudioArtist = createReelAudioArtist ?: "Bollywood Classic",
                 onPublishReel = { newReel ->
                     viewModel.publishReel(newReel)
                     isCreateScreenOpen = false
+                    createReelAudioTitle = null
+                    createReelAudioArtist = null
                     activeTab = ReelNavTab.FEED
                 },
-                onCancel = { isCreateScreenOpen = false }
+                onCancel = {
+                    isCreateScreenOpen = false
+                    createReelAudioTitle = null
+                    createReelAudioArtist = null
+                }
             )
         }
     }

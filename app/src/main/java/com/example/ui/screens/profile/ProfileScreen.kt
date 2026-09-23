@@ -28,16 +28,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -73,8 +81,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PostAdd
+import com.example.data.model.BlacklistedUserEntity
+import com.example.data.model.CreatorPageEntity
+import com.example.data.model.ModerationReportEntity
 import com.example.data.model.ReelEntity
 import com.example.data.model.UserEntity
+import com.example.ui.components.CreatePageDialog
+import com.example.ui.components.ModeratorControlSheet
+import com.example.ui.components.SecurityPrivacyDialog
+import com.example.ui.components.TermsAndConditionsDialog
 import com.example.ui.components.VideoFilterOverlay
 import com.example.ui.theme.ReelBorder
 import com.example.ui.theme.ReelCyan
@@ -89,11 +110,23 @@ fun ProfileScreen(
     user: UserEntity?,
     userReels: List<ReelEntity>,
     allReels: List<ReelEntity>,
+    blacklistedUsers: List<BlacklistedUserEntity> = emptyList(),
+    pendingReports: List<ModerationReportEntity> = emptyList(),
+    allPages: List<CreatorPageEntity> = emptyList(),
     onUpdateProfile: (UserEntity) -> Unit,
     onDeleteAccount: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToMonetization: () -> Unit,
     onDeleteReel: (Long) -> Unit,
+    onCreatePage: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onSwitchToPage: (CreatorPageEntity) -> Unit = {},
+    onSwitchToNormalProfile: () -> Unit = {},
+    onDeletePage: (Long) -> Unit = {},
+    onBlacklistUser: (String, String, String) -> Unit = { _, _, _ -> },
+    onUnblacklistUser: (String) -> Unit = {},
+    onDeleteBlacklistEntry: (Long) -> Unit = {},
+    onResolveReportAndBan: (Long, String, String, String) -> Unit = { _, _, _, _ -> },
+    onDismissReport: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -101,6 +134,11 @@ fun ProfileScreen(
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showSecurityDialog by remember { mutableStateOf(false) }
+    var showModeratorSheet by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var showCreatePageDialog by remember { mutableStateOf(false) }
+    var showPagesListDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = My Reels, 1 = Saved
 
     val savedReels = allReels.filter { it.isDownloaded }
@@ -138,6 +176,12 @@ fun ProfileScreen(
                     )
 
                     Row {
+                        IconButton(
+                            onClick = { showSecurityDialog = true },
+                            modifier = Modifier.testTag("security_privacy_top_icon")
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = "Security & Privacy", tint = ReelCyan)
+                        }
                         IconButton(onClick = onNavigateToMonetization) {
                             Icon(Icons.Default.MonetizationOn, contentDescription = "Studio", tint = ReelGold)
                         }
@@ -219,7 +263,270 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Action Buttons (Edit Profile & Danger Zone)
+                // Admin Moderator & Safety Zone Banner
+                Card(
+                    onClick = { showModeratorSheet = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1528)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Brush.horizontalGradient(listOf(Color(0xFFE53935), Color(0xFFFF9800)))),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("open_profile_moderator_zone")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE53935).copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "मॉडरेटर कंट्रोल ज़ोन (Admin Zone)",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "ब्लैकलिस्ट: ${blacklistedUsers.size} यूजर | रिपोर्ट: ${pendingReports.size} पेंडिंग",
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.Gavel,
+                            contentDescription = null,
+                            tint = ReelGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Page Mode / Normal Profile Controller Banner (पेज बनाने व सामान्य करने का ऑप्शन - कमाई के लिए)
+                if (currentUser.isPageMode) {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1028)),
+                        border = BorderStroke(1.5.dp, Brush.horizontalGradient(listOf(ReelGold, ReelPink))),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("page_mode_active_card")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(ReelGold.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.PostAdd, contentDescription = null, tint = ReelGold, modifier = Modifier.size(20.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = currentUser.activePageName.ifBlank { "क्रिएटर पेज (Creator Page)" },
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Default.Verified, contentDescription = null, tint = ReelGold, modifier = Modifier.size(14.dp))
+                                        }
+                                        Text(
+                                            text = "कैटेगरी: ${currentUser.activePageCategory} • मोनेटाइजेशन चालू 💰",
+                                            fontSize = 11.sp,
+                                            color = ReelGold
+                                        )
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(ReelGold.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text("PAGE ACTIVE", color = ReelGold, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Page Earnings snippet
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White.copy(alpha = 0.05f))
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("पेज कमाई (Revenue)", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                                    Text("₹${currentUser.activePageEarnings}", color = ReelGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                                Box(modifier = Modifier.width(1.dp).height(20.dp).background(Color.White.copy(alpha = 0.1f)))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("पेज फॉलोअर्स (Followers)", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                                    Text("${currentUser.activePageFollowers} जुड़े", color = ReelCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Page Action Buttons: Switch to Normal Profile (पेज को नॉर्मल करने का ऑप्शन) + Monetization
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        onSwitchToNormalProfile()
+                                        Toast.makeText(context, "✅ सामान्य (पर्सनल) प्रोफ़ाइल में बदल दिया गया!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .weight(1.2f)
+                                        .height(38.dp)
+                                        .testTag("switch_to_normal_profile_button")
+                                ) {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("सामान्य प्रोफ़ाइल करें", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+
+                                Button(
+                                    onClick = onNavigateToMonetization,
+                                    colors = ButtonDefaults.buttonColors(containerColor = ReelGold),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp)
+                                        .testTag("page_earnings_button")
+                                ) {
+                                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("पेज कमाई देखें", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF140E20)),
+                        border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(ReelCyan.copy(alpha = 0.5f), ReelPink.copy(alpha = 0.5f)))),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("normal_profile_mode_card")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(ReelCyan.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = ReelCyan, modifier = Modifier.size(20.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "सामान्य प्रोफ़ाइल (Personal Mode)",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "पेज बनाकर रील्स से सीधे पैसे कमाएं 💰",
+                                            fontSize = 11.sp,
+                                            color = Color.White.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { showCreatePageDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = ReelPink),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp)
+                                        .testTag("create_new_page_button")
+                                ) {
+                                    Icon(Icons.Default.AddCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("पेज बनाएं • पैसे कमाएं", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+
+                                if (allPages.isNotEmpty()) {
+                                    OutlinedButton(
+                                        onClick = { showPagesListDialog = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ReelGold),
+                                        border = BorderStroke(1.dp, ReelGold.copy(alpha = 0.6f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .testTag("switch_to_creator_page_button")
+                                    ) {
+                                        Icon(Icons.Default.Layers, contentDescription = null, tint = ReelGold, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("पेज खोलें (${allPages.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ReelGold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Action Buttons (Edit Profile, Security & Privacy, Terms & Conditions, Delete Account)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -233,22 +540,52 @@ fun ProfileScreen(
                             .height(40.dp)
                             .testTag("edit_profile_button")
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Edit Profile", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { showSecurityDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ReelCyan),
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .height(40.dp)
+                            .testTag("security_privacy_button")
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = ReelCyan, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Security", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ReelCyan)
+                    }
+
+                    OutlinedButton(
+                        onClick = { showTermsDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ReelGold),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .testTag("terms_conditions_button")
+                    ) {
+                        Icon(Icons.Default.Gavel, contentDescription = null, tint = ReelGold, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Terms", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ReelGold)
                     }
 
                     OutlinedButton(
                         onClick = { showDeleteAccountDialog = true },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
+                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.5f)),
                         modifier = Modifier
+                            .weight(1f)
                             .height(40.dp)
                             .testTag("delete_account_button")
                     ) {
-                        Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Delete Account", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("Delete", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF5252))
                     }
                 }
 
@@ -523,6 +860,169 @@ fun ProfileScreen(
                 }
             },
             containerColor = Color(0xFF1B0B14)
+        )
+    }
+
+    // Security & Privacy Settings Dialog
+    if (showSecurityDialog) {
+        SecurityPrivacyDialog(
+            user = currentUser,
+            onUpdateSecurity = { updatedUser ->
+                onUpdateProfile(updatedUser)
+            },
+            onRequestDeleteAccount = {
+                showSecurityDialog = false
+                showDeleteAccountDialog = true
+            },
+            onDismiss = { showSecurityDialog = false }
+        )
+    }
+
+    // Create Page Dialog (पेज बनाने का ऑप्शन - जिससे लोग पैसे कमाएंगे)
+    if (showCreatePageDialog) {
+        CreatePageDialog(
+            initialUpiId = currentUser.upiId.ifBlank { "irafan@okaxis" },
+            onDismiss = { showCreatePageDialog = false },
+            onPageCreated = { pageName, category, bio, upiId ->
+                showCreatePageDialog = false
+                onCreatePage(pageName, category, bio, upiId)
+            }
+        )
+    }
+
+    // Pages List & Switcher Dialog (क्रिएटर पेज चुनने व प्रबंधित करने का ऑप्शन)
+    if (showPagesListDialog) {
+        AlertDialog(
+            onDismissRequest = { showPagesListDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Layers, contentDescription = null, tint = ReelGold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("क्रिएटर पेजेस (${allPages.size})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "जिस पेज पर काम करना हो उसे चुनें या नया पेज बनाएं:",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 11.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    allPages.forEach { page ->
+                        val isCurrentActive = currentUser.isPageMode && currentUser.activePageId == page.id
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isCurrentActive) ReelPink.copy(alpha = 0.2f) else ReelSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .border(
+                                    1.dp,
+                                    if (isCurrentActive) ReelGold else Color.White.copy(alpha = 0.1f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(page.pageName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        if (isCurrentActive) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("(एक्टिव)", color = ReelGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    Text(
+                                        "${page.category} • ${page.followersCount} फॉलोअर्स • ₹${page.totalEarnings} कमाई",
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        fontSize = 10.5.sp
+                                    )
+                                }
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (!isCurrentActive) {
+                                        Button(
+                                            onClick = {
+                                                showPagesListDialog = false
+                                                onSwitchToPage(page)
+                                                Toast.makeText(context, "✅ '${page.pageName}' पेज एक्टिव हो गया!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = ReelGold),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Text("खोलें", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            onDeletePage(page.id)
+                                            Toast.makeText(context, "पेज हटा दिया गया", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Page", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            showPagesListDialog = false
+                            showCreatePageDialog = true
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ReelPink),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Icon(Icons.Default.AddCircle, contentDescription = null, tint = ReelPink, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("+ एक और नया पेज बनाएं", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPagesListDialog = false }) {
+                    Text("Close • बंद करें", color = Color.White.copy(alpha = 0.7f))
+                }
+            },
+            containerColor = ReelSurface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Moderator Control Zone Sheet
+    if (showModeratorSheet) {
+        ModeratorControlSheet(
+            blacklistedUsers = blacklistedUsers,
+            pendingReports = pendingReports,
+            onBlacklistUser = onBlacklistUser,
+            onUnblacklistUser = onUnblacklistUser,
+            onDeleteBlacklistEntry = onDeleteBlacklistEntry,
+            onResolveReportAndBan = onResolveReportAndBan,
+            onDismissReport = onDismissReport,
+            onDismiss = { showModeratorSheet = false }
+        )
+    }
+
+    // Terms & Conditions and Legal Safety Zone Dialog
+    if (showTermsDialog) {
+        TermsAndConditionsDialog(
+            onDismiss = { showTermsDialog = false }
         )
     }
 }

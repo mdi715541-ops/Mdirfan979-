@@ -82,6 +82,7 @@ fun AuthScreen(
     var nameInput by remember { mutableStateOf("Mohammad Irafan") }
     var passwordVisible by remember { mutableStateOf(false) }
     var showGoogleAccountPicker by remember { mutableStateOf(false) }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -288,7 +289,24 @@ fun AuthScreen(
                     .testTag("auth_password_input")
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = { showForgotPasswordDialog = true },
+                    modifier = Modifier.testTag("forgot_password_button")
+                ) {
+                    Text(
+                        text = "पासवर्ड भूल गए? (Forgot Password?)",
+                        color = ReelCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
@@ -440,6 +458,26 @@ fun AuthScreen(
                 }
             },
             containerColor = ReelSurface
+        )
+    }
+
+    if (showForgotPasswordDialog) {
+        com.example.ui.components.ForgotPasswordDialog(
+            initialEmail = emailInput,
+            onDismiss = { showForgotPasswordDialog = false },
+            onPasswordResetSuccess = { newPass ->
+                passwordInput = newPass
+                showForgotPasswordDialog = false
+                val loggedInUser = UserEntity(
+                    id = "user_main",
+                    name = if (selectedTab == 1 && nameInput.isNotBlank()) nameInput else "Mohammad Irafan",
+                    handle = "@${(if (selectedTab == 1 && nameInput.isNotBlank()) nameInput else "irafan").lowercase().replace(" ", "_")}",
+                    email = emailInput.trim(),
+                    isLoggedIn = true,
+                    password = newPass
+                )
+                onLoginSuccess(loggedInUser)
+            }
         )
     }
 }

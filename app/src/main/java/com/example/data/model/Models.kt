@@ -18,7 +18,24 @@ data class UserEntity(
     val isLoggedIn: Boolean = true,
     val upiId: String = "irafan@okaxis",
     val bankAccount: String = "•••• 6493",
-    val ifscCode: String = "HDFC0001234"
+    val ifscCode: String = "HDFC0001234",
+    // Security & Anti-Hack protections
+    val is2FAEnabled: Boolean = true,
+    val isAppLockEnabled: Boolean = true,
+    val isAntiHackShieldActive: Boolean = true,
+    // Privacy controls
+    val isPrivateAccount: Boolean = false,
+    val allowReelDownloads: Boolean = true,
+    val autoFilterComments: Boolean = true,
+    // Page Mode vs Normal Profile Mode (पेज मोड vs सामान्य प्रोफ़ाइल)
+    val isPageMode: Boolean = false,
+    val activePageId: Long = 0L,
+    val activePageName: String = "",
+    val activePageCategory: String = "Digital Creator",
+    val activePageFollowers: Int = 0,
+    val activePageEarnings: Double = 0.0,
+    // Password for recovery & authentication
+    val password: String = "password123"
 )
 
 @Entity(tableName = "reels")
@@ -33,7 +50,7 @@ data class ReelEntity(
     val videoUri: String, // Local URI or sample bundled video URI / procedural
     val audioTitle: String = "Original Sound - ReelVibe",
     val audioArtist: String = "Trending Music",
-    val filterType: String = "NORMAL", // NORMAL, VINTAGE, NOIR, VIBRANT, NEON, CINEMATIC, GOLDEN_HOUR
+    val filterType: String = "NORMAL", // NORMAL, VINTAGE, NOIR, VIBRANT, NEON, CINEMATIC, GOLDEN_HOUR, BOLLYWOOD_GLAM, RETRO_VHS
     val likesCount: Int = 0,
     val commentsCount: Int = 0,
     val sharesCount: Int = 0,
@@ -42,7 +59,35 @@ data class ReelEntity(
     val isLikedByMe: Boolean = false,
     val isDownloaded: Boolean = false,
     val isUserUpload: Boolean = false,
-    val earnings: Double = 0.0
+    val earnings: Double = 0.0,
+    val isMonetized: Boolean = true,
+    val adEarnings: Double = 12.50,
+    val location: String = "",
+    val videoStickerText: String = "",
+    val remixesCount: Int = 3,
+    val collaboratorHandle: String = "",
+    val collaboratorAvatar: String = "",
+    val isSavedByMe: Boolean = false
+)
+
+@Entity(tableName = "stories")
+data class StoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val creatorId: String = "user_main",
+    val creatorName: String,
+    val creatorHandle: String,
+    val creatorAvatar: String = "",
+    val mediaType: String = "PHOTO", // "PHOTO" or "VIDEO"
+    val mediaUri: String = "",
+    val audioTitle: String = "Nigahen Kyon Churaati Hai • Udit Narayan",
+    val audioArtist: String = "Bollywood Classic",
+    val caption: String = "",
+    val stickerText: String = "",
+    val location: String = "अपना फखरपुर बहराइच",
+    val timestamp: Long = System.currentTimeMillis(),
+    val isViewed: Boolean = false,
+    val isUserStory: Boolean = false,
+    val likesCount: Int = 0
 )
 
 @Entity(tableName = "comments")
@@ -56,6 +101,33 @@ data class CommentEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val likesCount: Int = 0,
     val isLiked: Boolean = false
+)
+
+@Entity(tableName = "blacklisted_users")
+data class BlacklistedUserEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val userHandle: String,
+    val userName: String,
+    val userAvatar: String = "",
+    val reason: String = "Abusive Language & Guidelines Violation (अभद्र भाषा और नियम उल्लंघन)",
+    val bannedBy: String = "@irafan_creator (Admin)",
+    val timestamp: Long = System.currentTimeMillis(),
+    val isPermanent: Boolean = true,
+    val status: String = "BANNED" // "BANNED" or "WARNING"
+)
+
+@Entity(tableName = "moderation_reports")
+data class ModerationReportEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val targetType: String, // "COMMENT", "REEL", "USER"
+    val targetId: Long,
+    val reportedHandle: String,
+    val reportedName: String,
+    val contentSnippet: String,
+    val violationType: String, // "ABUSIVE_LANGUAGE", "HATE_SPEECH", "COMMUNITY_VIOLATION", "SPAM"
+    val reportCount: Int = 1,
+    val status: String = "PENDING", // "PENDING", "RESOLVED_BANNED", "DISMISSED"
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "monetization")
@@ -89,7 +161,9 @@ enum class VideoFilter(val displayName: String, val description: String) {
     VIBRANT("Vibrant", "Punchy rich color pop"),
     NEON("Neon Glow", "Cyberpunk magenta & cyan"),
     CINEMATIC("Cinematic", "Teal & orange Hollywood look"),
-    GOLDEN_HOUR("Golden Hour", "Warm sunset amber radiance")
+    GOLDEN_HOUR("Golden Hour", "Warm sunset amber radiance"),
+    BOLLYWOOD_GLAM("Bollywood", "Dreamy soft glow & warm tones"),
+    RETRO_VHS("Retro VHS", "90s camcorder aesthetic & vibe")
 }
 
 data class AudioTrack(
@@ -99,3 +173,22 @@ data class AudioTrack(
     val duration: String,
     val isExtracted: Boolean = false
 )
+
+@Entity(tableName = "creator_pages")
+data class CreatorPageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val ownerHandle: String = "@irafan_creator",
+    val pageName: String,
+    val pageHandle: String,
+    val category: String = "Digital Creator",
+    val bio: String = "Official Creator Page • मनोरंजन और नई रील्स! 🚀",
+    val followersCount: Int = 1250,
+    val totalViews: Long = 45000L,
+    val totalEarnings: Double = 3450.00, // Total ₹ earned from this page
+    val monthlyRevenue: Double = 1200.00,
+    val isMonetizationActive: Boolean = true,
+    val upiId: String = "irafan@okaxis",
+    val bannerTheme: String = "PURPLE",
+    val createdAt: Long = System.currentTimeMillis()
+)
+

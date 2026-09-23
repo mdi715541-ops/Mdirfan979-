@@ -30,10 +30,14 @@ import androidx.compose.material.icons.filled.AdsClick
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -242,6 +246,200 @@ fun MonetizationScreen(
                             ) {
                                 Text("Boost +₹50", color = ReelCyan, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Creator Partner Program Eligibility & Guidelines Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF140D24)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .border(1.dp, ReelGold.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                    .testTag("monetization_guidelines_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(ReelGold.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Stars,
+                                contentDescription = null,
+                                tint = ReelGold,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Creator Monetization Criteria & Rules",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp
+                            )
+                            Text(
+                                text = "मोनेटाइजेशन पात्रता व महत्वपूर्ण नियम",
+                                color = ReelGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 1. Followers Criterion (500 Followers)
+                    val followersTarget = 500
+                    val currentFollowers = 845 // User has 845 followers
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("1. Followers • 500 फॉलोवर", fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (currentFollowers >= followersTarget) "Eligible (पात्र $currentFollowers/500) ✓" else "$currentFollowers/$followersTarget",
+                            color = if (currentFollowers >= followersTarget) ReelGreen else ReelGold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { (currentFollowers.toFloat() / followersTarget).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = ReelGreen,
+                        trackColor = Color.White.copy(alpha = 0.1f)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 2. Views Criterion (1,000 Views)
+                    val viewsTarget = 1000L
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("2. Reel Views • 1,000 व्यूज", fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (currentStats.totalViews >= viewsTarget) "Eligible (पात्र ${currentStats.totalViews}/1000) ✓" else "${currentStats.totalViews}/$viewsTarget",
+                            color = if (currentStats.totalViews >= viewsTarget) ReelGreen else ReelGold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { (currentStats.totalViews.toFloat() / viewsTarget).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = ReelGreen,
+                        trackColor = Color.White.copy(alpha = 0.1f)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 3. Likes Criterion (1,000 Likes)
+                    val likesTarget = 1000
+                    val currentLikes = 2450 // User total likes
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("3. Reel Likes • 1,000 लाइक", fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = if (currentLikes >= likesTarget) "Eligible (पात्र $currentLikes/1000) ✓" else "$currentLikes/$likesTarget",
+                            color = if (currentLikes >= likesTarget) ReelGreen else ReelGold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { (currentLikes.toFloat() / likesTarget).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = ReelGreen,
+                        trackColor = Color.White.copy(alpha = 0.1f)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Active Monetization Status Banner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ReelGreen.copy(alpha = 0.15f))
+                            .border(1.dp, ReelGreen.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ReelGreen, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("मोनेटाइजेशन चालू है (Monetization Active)", color = ReelGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("रील्स पर विज्ञापन चल रहे हैं और प्रति व्यू/इम्प्रेशन कमाई सीधे वॉलेट में जुड़ रही है।", color = Color.White.copy(alpha = 0.85f), fontSize = 10.5.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Company Safe-Harbor & Security Anti-Hack Disclaimer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.05f))
+                            .border(1.dp, ReelPink.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = ReelPink,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "सुरक्षा, प्राइवेसी व कंपनी अस्वीकरण (Legal & Safety):",
+                                    color = ReelPink,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "• कंपनी ज़िम्मेदार नहीं है: यदि कोई यूजर गलत, अश्लील या भ्रामक वीडियो पोस्ट करता है, तो वह स्वयं व्यक्तिगत रूप से जिम्मेदार होगा। कंपनी इसके लिए उत्तरदायी नहीं है।\n• एंटी-हैक सुरक्षा: आपका अकाउंट, डेटा व कमाई 256-बिट सुरक्षित एन्क्रिप्शन व 2FA से सुरक्षित है ताकि अकाउंट कभी हैक न हो सके।",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp
+                            )
                         }
                     }
                 }
